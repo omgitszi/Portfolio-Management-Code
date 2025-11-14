@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 import datetime
-
+#
 # Historically some scripts used 'sp_500_top20_esg_overlap.csv' (with underscore)
 # while others write 'sp500_top20_esg_overlap.csv' (no underscore). Try the
 # no-underscore variant by default but fall back at runtime if needed.

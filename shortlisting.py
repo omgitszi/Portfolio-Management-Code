@@ -40,8 +40,8 @@ def build_top200_from_riskfile(risk_file: Path, out_path: Path, top_n: int = 200
     """Read S&P risk rating CSV and select top-N ESG-rated tickers.
 
     Selection logic:
-    - Prefer numeric 'ESG Risk Percentile' (higher is better). Values like '50th percentile' are parsed.
-    - If percentile is missing, fall back to numeric 'Total ESG Risk score' (higher is better).
+    - Prefer numeric 'ESG Risk Percentile' (lower is better). Values like '50th percentile' are parsed.
+    - If percentile is missing, fall back to numeric 'Total ESG Risk score' (lower is better).
     - If both missing, drop the row.
     Writes a CSV with columns: ticker, Symbol, Total ESG Risk score, ESG Risk Percentile (num), rank_score
     Returns the DataFrame written.
@@ -107,13 +107,13 @@ def build_top200_from_riskfile(risk_file: Path, out_path: Path, top_n: int = 200
     else:
         df['__total_esg_score'] = pd.NA
 
-    # Build a rank score where higher raw values are better. We invert by storing negative
+    # Build a rank score where lower raw values are better. Keep the raw value
     # so that sorting ascending picks the best-rated companies first.
     def rank_score(row):
         if pd.notna(row['__esg_percentile_num']):
-            return -float(row['__esg_percentile_num'])
+            return float(row['__esg_percentile_num'])
         if pd.notna(row['__total_esg_score']):
-            return -float(row['__total_esg_score'])
+            return float(row['__total_esg_score'])
         return float('inf')
 
     df['__rank_score'] = df.apply(rank_score, axis=1)
@@ -168,15 +168,47 @@ if not top200_df.empty:
         top200 = set(top200_df[first].astype(str).str.strip().str.replace('.', '-', regex=False).str.upper().dropna().tolist())
 
 
+
+# Build union of the momentum shortlists
 union_top20 = sorted(s12 | s6)
-overlap = sorted(list(set(union_top20) & top200))
+
+# Create a DataFrame for the union and merge with top200 ESG data (if available)
+df_union = pd.DataFrame({'ticker': union_top20})
+df_union['ticker'] = df_union['ticker'].astype(str).str.strip().str.replace('.', '-', regex=False).str.upper()
+
+df_overlap = pd.DataFrame(columns=['ticker'])
+if not top200_df.empty and 'ticker' in top200_df.columns:
+    # normalize top200 tickers as well
+    top200_df = top200_df.copy()
+    top200_df['ticker'] = top200_df['ticker'].astype(str).str.strip().str.replace('.', '-', regex=False).str.upper()
+
+    # Merge to attach ESG scores and rank_score to the union tickers
+    df_overlap = pd.merge(df_union, top200_df, on='ticker', how='inner')
+
+    # If a rank_score column exists, filter and sort by it (lower is better)
+    if 'rank_score' in df_overlap.columns:
+        df_overlap = df_overlap[df_overlap['rank_score'].notna()].sort_values('rank_score', ascending=True)
+
+    overlap = df_overlap['ticker'].tolist()
+else:
+    overlap = []
 
 # Write outputs
 out_union = output_dir / 'sp500_top20_all.csv'
 out_overlap = output_dir / 'sp500_top20_esg_overlap.csv'
 
 pd.DataFrame({'ticker': union_top20}).to_csv(out_union, index=False)
-pd.DataFrame({'ticker': overlap}).to_csv(out_overlap, index=False)
+
+# Write a richer overlap file (with ESG scores & rank if available)
+if not df_overlap.empty:
+    # determine columns to write (preserve available ESG columns)
+    write_cols = []
+    for c in ['ticker', 'Total ESG Risk score', 'ESG Risk Percentile (num)', 'rank_score']:
+        if c in df_overlap.columns:
+            write_cols.append(c)
+    df_overlap.to_csv(out_overlap, index=False, columns=write_cols)
+else:
+    pd.DataFrame({'ticker': overlap}).to_csv(out_overlap, index=False)
 
 # Print summary
 print(f"Loaded {len(s12)} tickers from {file_12m.name}")
