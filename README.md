@@ -73,5 +73,3 @@ All generated CSVs are written to the `output/` directory. Examples:
 ## Troubleshooting
 - If a package import fails (e.g. `ModuleNotFoundError: No module named 'yfinance'`), ensure you installed `requirements.txt` into the venv you're running. Use the explicit venv python above to install/run to avoid interpreter mismatches.
 
-## Want more?
-If you'd like the README expanded (examples of outputs, sample rows, or a short how-to for reproducing the full pipeline on a fresh machine), tell me which parts and I will add them.
