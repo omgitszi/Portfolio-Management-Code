@@ -194,8 +194,7 @@ if __name__ == "__main__":
     test_tickers = sp500_tickers  # full list from CSV
     print(f"Processing {len(test_tickers)} tickers (full S&P 500)")
     
-    # Use historical date that definitely has data
-    end_date = "2024-06-01"
+    end_date = "2025-10-14"
     
     print("Calculating momentum scores...")
     print("This may take a few minutes...")
