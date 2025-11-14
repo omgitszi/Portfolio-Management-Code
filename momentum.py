@@ -6,6 +6,7 @@ import requests
 import io
 import time
 import math
+from pathlib import Path
 
 def calculate_momentum_score(z_score):
     """Calculate momentum score from z-score according to S&P methodology
@@ -306,6 +307,11 @@ if __name__ == "__main__":
     failed = 0
     delay = 0.3  # Reduced delay
     
+    # Prepare output directory
+    base = Path(__file__).parent
+    output_dir = base / 'output'
+    output_dir.mkdir(exist_ok=True)
+
     for i, ticker in enumerate(sp500_tickers):
         if (i + 1) % 10 == 0:
             print(f"Progress: {i+1}/{len(sp500_tickers)} ({successful} successful, {failed} failed)")
@@ -320,8 +326,8 @@ if __name__ == "__main__":
         # Save partial results every 50 stocks
         if (i + 1) % 50 == 0 and results:
             try:
-                pd.DataFrame(results).to_csv('momentum_partial.csv', index=False)
-            except:
+                pd.DataFrame(results).to_csv(output_dir / 'momentum_partial.csv', index=False)
+            except Exception:
                 pass
         
         time.sleep(delay)
@@ -476,14 +482,16 @@ if __name__ == "__main__":
     try:
         df_results = pd.DataFrame(results)
         df_results = df_results.sort_values('momentum_score', ascending=False)
-        df_results.to_csv('sp500_momentum_results.csv', index=False)
-        print(f"\n✓ Results saved to 'sp500_momentum_results.csv'")
+        results_path = output_dir / 'sp500_momentum_results.csv'
+        df_results.to_csv(results_path, index=False)
+        print(f"\n✓ Results saved to '{results_path}'")
 
         # Also save a condensed CSV containing only ticker and momentum score
         try:
             df_scores = df_results[['ticker', 'momentum_score']].copy()
-            df_scores.to_csv('sp500_momentum_scores.csv', index=False)
-            print("✓ Condensed ticker+score file saved to 'sp500_momentum_scores.csv'")
+            scores_path = output_dir / 'sp500_momentum_scores.csv'
+            df_scores.to_csv(scores_path, index=False)
+            print(f"✓ Condensed ticker+score file saved to '{scores_path}'")
         except Exception as e:
             print(f"\n Failed to save condensed scores CSV: {e}")
     except Exception as e:
@@ -497,8 +505,9 @@ if __name__ == "__main__":
             if len(df_12m) > 0:
                 top_n_12m = max(1, math.ceil(len(df_12m) * 0.20))
                 df_top12 = df_12m.sort_values('momentum_score_12m', ascending=False).head(top_n_12m)
-                df_top12[['ticker', 'momentum_score_12m']].to_csv('sp500_top20_12m.csv', index=False)
-                print(f"✓ Top {top_n_12m} tickers (top 20%) for 12-month momentum saved to 'sp500_top20_12m.csv'")
+                top12_path = output_dir / 'sp500_top20_12m.csv'
+                df_top12[['ticker', 'momentum_score_12m']].to_csv(top12_path, index=False)
+                print(f"✓ Top {top_n_12m} tickers (top 20%) for 12-month momentum saved to '{top12_path}'")
 
         # 6-month top 20%
         if 'momentum_score_6m' in df_results.columns:
@@ -506,8 +515,9 @@ if __name__ == "__main__":
             if len(df_6m) > 0:
                 top_n_6m = max(1, math.ceil(len(df_6m) * 0.20))
                 df_top6 = df_6m.sort_values('momentum_score_6m', ascending=False).head(top_n_6m)
-                df_top6[['ticker', 'momentum_score_6m']].to_csv('sp500_top20_6m.csv', index=False)
-                print(f"✓ Top {top_n_6m} tickers (top 20%) for 6-month momentum saved to 'sp500_top20_6m.csv'")
+                top6_path = output_dir / 'sp500_top20_6m.csv'
+                df_top6[['ticker', 'momentum_score_6m']].to_csv(top6_path, index=False)
+                print(f"✓ Top {top_n_6m} tickers (top 20%) for 6-month momentum saved to '{top6_path}'")
     except Exception as e:
         print(f"\n Failed to save top-20% files: {e}")
     
