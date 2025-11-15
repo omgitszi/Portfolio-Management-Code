@@ -275,10 +275,27 @@ if __name__ == "__main__":
     print("Following S&P Dow Jones Indices Methodology")
     print("=" * 80)
     
-    # Get S&P 500 tickers
-    print("\nFetching S&P 500 tickers...")
-    sp500_tickers = get_sp500_tickers()
-    print(f"Found {len(sp500_tickers)} tickers")
+    # Load tickers from top ESG list
+    print("\nLoading tickers from 'output/top_esg_tickers.csv'...")
+    base = Path(__file__).parent
+    output_dir = base / 'output'
+    te_path = output_dir / 'top_esg_tickers.csv'
+    if not te_path.exists():
+        print(f"Error: '{te_path}' not found. Run ESG calculation first to create top_esg_tickers.csv")
+        exit(1)
+
+    try:
+        te_df = pd.read_csv(te_path)
+        # Try to find a ticker-like column
+        if 'ticker' in te_df.columns:
+            selected_tickers = te_df['ticker'].astype(str).str.replace('.', '-', regex=False).str.strip().str.upper().tolist()
+        else:
+            # fallback to first column
+            selected_tickers = te_df.iloc[:, 0].astype(str).str.replace('.', '-', regex=False).str.strip().str.upper().tolist()
+        print(f"Loaded {len(selected_tickers)} tickers from {te_path}")
+    except Exception as e:
+        print(f"Failed to read {te_path}: {e}")
+        exit(1)
     
     # Reference date (last business day of month for semi-annual rebalancing)
     # For November 14, 2025, the reference date would be October 31, 2025
@@ -308,13 +325,12 @@ if __name__ == "__main__":
     delay = 0.3  # Reduced delay
     
     # Prepare output directory
-    base = Path(__file__).parent
-    output_dir = base / 'output'
     output_dir.mkdir(exist_ok=True)
 
-    for i, ticker in enumerate(sp500_tickers):
+    for i, ticker in enumerate(selected_tickers):
         if (i + 1) % 10 == 0:
-            print(f"Progress: {i+1}/{len(sp500_tickers)} ({successful} successful, {failed} failed)")
+            total = len(selected_tickers)
+            print(f"Progress: {i+1}/{total} ({successful} successful, {failed} failed)")
         
         result = calculate_momentum_for_ticker(ticker, reference_date)
         if result:
@@ -482,14 +498,14 @@ if __name__ == "__main__":
     try:
         df_results = pd.DataFrame(results)
         df_results = df_results.sort_values('momentum_score', ascending=False)
-        results_path = output_dir / 'sp500_momentum_results.csv'
+        results_path = output_dir / 'top_esg_tickers_momentum.csv'
         df_results.to_csv(results_path, index=False)
         print(f"\n✓ Results saved to '{results_path}'")
 
         # Also save a condensed CSV containing only ticker and momentum score
         try:
             df_scores = df_results[['ticker', 'momentum_score']].copy()
-            scores_path = output_dir / 'sp500_momentum_scores.csv'
+            scores_path = output_dir / 'top_esg_tickers_momentum_scores.csv'
             df_scores.to_csv(scores_path, index=False)
             print(f"✓ Condensed ticker+score file saved to '{scores_path}'")
         except Exception as e:
@@ -508,6 +524,13 @@ if __name__ == "__main__":
                 top12_path = output_dir / 'sp500_top20_12m.csv'
                 df_top12[['ticker', 'momentum_score_12m']].to_csv(top12_path, index=False)
                 print(f"✓ Top {top_n_12m} tickers (top 20%) for 12-month momentum saved to '{top12_path}'")
+                # Also save candidate list for 12-month momentum selection
+                try:
+                    candidate_path = output_dir / 'candidate_tickers.csv'
+                    df_top12[['ticker', 'momentum_score_12m']].to_csv(candidate_path, index=False)
+                    print(f"✓ Candidate tickers (12m top 20%) saved to '{candidate_path}'")
+                except Exception as e:
+                    print(f"\n Failed to save candidate_tickers.csv: {e}")
 
         # 6-month top 20%
         if 'momentum_score_6m' in df_results.columns:
@@ -518,6 +541,13 @@ if __name__ == "__main__":
                 top6_path = output_dir / 'sp500_top20_6m.csv'
                 df_top6[['ticker', 'momentum_score_6m']].to_csv(top6_path, index=False)
                 print(f"✓ Top {top_n_6m} tickers (top 20%) for 6-month momentum saved to '{top6_path}'")
+                # Also save candidate list for 6-month momentum selection
+                try:
+                    candidate_short_path = output_dir / 'candidate_short_term_comparison.csv'
+                    df_top6[['ticker', 'momentum_score_6m']].to_csv(candidate_short_path, index=False)
+                    print(f"✓ Candidate tickers (6m top 20%) saved to '{candidate_short_path}'")
+                except Exception as e:
+                    print(f"\n Failed to save candidate_short_term_comparison.csv: {e}")
     except Exception as e:
         print(f"\n Failed to save top-20% files: {e}")
     
