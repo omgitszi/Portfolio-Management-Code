@@ -39,10 +39,11 @@ def load_tickers(path: Path):
 def build_top200_from_riskfile(risk_file: Path, out_path: Path, top_n: int = 200):
     """Read S&P risk rating CSV and select top-N ESG-rated tickers.
 
-    Selection logic:
-    - Prefer numeric 'ESG Risk Percentile' (lower is better). Values like '50th percentile' are parsed.
-    - If percentile is missing, fall back to numeric 'Total ESG Risk score' (lower is better).
-    - If both missing, drop the row.
+        Selection logic:
+        - Prefer numeric 'Total ESG Risk score' (lower is better). If present, stocks are
+            ranked by this value primarily so the top-N are those with the lowest total risk.
+        - If total score is missing, fall back to numeric 'ESG Risk Percentile' (lower is better).
+        - If both missing, drop the row.
     Writes a CSV with columns: ticker, Symbol, Total ESG Risk score, ESG Risk Percentile (num), rank_score
     Returns the DataFrame written.
     """
@@ -110,10 +111,12 @@ def build_top200_from_riskfile(risk_file: Path, out_path: Path, top_n: int = 200
     # Build a rank score where lower raw values are better. Keep the raw value
     # so that sorting ascending picks the best-rated companies first.
     def rank_score(row):
-        if pd.notna(row['__esg_percentile_num']):
-            return float(row['__esg_percentile_num'])
+        # Rank by Total ESG Risk score first (lower is better). Use percentile only
+        # when total score is missing so that top-N reflects lowest Total ESG Risk.
         if pd.notna(row['__total_esg_score']):
             return float(row['__total_esg_score'])
+        if pd.notna(row['__esg_percentile_num']):
+            return float(row['__esg_percentile_num'])
         return float('inf')
 
     df['__rank_score'] = df.apply(rank_score, axis=1)
@@ -140,14 +143,17 @@ def build_top200_from_riskfile(risk_file: Path, out_path: Path, top_n: int = 200
 
 
 def ensure_top200_exists():
-    # If already present, load it; otherwise attempt to build from known risk files
-    if file_top200.exists():
-        return pd.read_csv(file_top200)
-
+    # If a source risk file exists, always (re)build top200_esg.csv from it so the
+    # output reflects the latest selection logic. If no source is available but the
+    # output CSV already exists, load it as a fallback.
     for candidate in possible_risk_files:
         if candidate.exists():
             print(f"Found risk ratings file: {candidate}; building {file_top200} (top200)")
             return build_top200_from_riskfile(candidate, file_top200, top_n=200)
+
+    # No source risk file; fall back to existing top200_esg.csv if present
+    if file_top200.exists():
+        return pd.read_csv(file_top200)
 
     # Not found
     warnings.warn('No risk ratings file found in repo root; top200_esg.csv not created')
