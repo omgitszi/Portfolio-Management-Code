@@ -1,0 +1,33 @@
+ticker,Name,GICS classification,weight,price,dollar_allocation,shares,momentum_score_12m,avg_esg_score,ESG rating,ESG provider
+MCK,McKesson Corporation,Health Care,19.15%,842.0900269,191503.5418,227.41457,1.829625631,8,AA,MSCI
+WMB,"The Williams Companies, Inc",Energy,17.19%,60.99000168,171860.0653,2817.839984,2.106062375,7.8,AA,MSCI
+GILD,"Gilead Sciences, Inc",Health Care,16.41%,125.0199966,164059.6668,1312.267406,2.854188605,9.8667,AAA,MSCI
+COR,"Cencora, Inc. (formerly AmerisourceBergen Corporation)",Health Care,14.29%,361.9400024,142932.731,394.90725,2.131784301,8.3867,AA,MSCI
+WELL,Welltower Inc.,Real Estate,13.51%,193.8200073,135100.6913,697.04203,3.062833286,7.5,AA,MSCI
+GS,"The Goldman Sachs Group, Inc",Financials,10.62%,790.9099731,106156.7577,134.221038,2.415110816,7.3,AA,MSCI
+EME,"EMCOR Group, Inc",Industrials,8.73%,619.8599854,87276.09937,140.799699,2.472795236,8.2667,AA,MSCI
+NI,NiSource Inc,Utilities,8.34%,42.88000107,83404.56585,1945.069118,2.728101895,8.9,AAA,MSCI
+STX,Seagate Technology Holdings plc,Information Technology,6.67%,258.2099915,66737.213,258.461002,3.010967031,8.0333,AA,MSCI
+BK,The Bank of New York Mellon Corporation,Financials,6.64%,110.4800034,66387.82635,600.903551,3.699972451,8,AA,MSCI
+ANET,"Arista Networks, Inc",Information Technology,5.49%,131.3699951,54949.24066,418.278471,1.927582322,7.3667,AA,MSCI
+AXON,"Axon Enterprise, Inc",Industrials,4.75%,554.3699951,47494.99223,85.673815,2.953148486,8.1667,AA,MSCI
+TPR,"Tapestry, Inc",Consumer Discretionary,3.32%,101.4100037,33224.77681,327.628199,4,7.4333,AA,MSCI
+NDAQ,"Nasdaq, Inc",Financials,2.81%,87.08000183,28125.92681,322.989506,2.425582946,8,AA,MSCI
+WSM,"Williams-Sonoma, Inc",Consumer Discretionary,2.43%,182.2400055,24326.69118,133.487107,1.833111984,10,AAA,MSCI
+PWR,"Quanta Services, Inc",Industrials,2.24%,429.2999878,22356.12711,52.075769,1.876851234,7.5667,AA,MSCI
+CAH,"Cardinal Health, Inc",Health Care,1.30%,205.3699951,13036.27316,63.47701,2.592876574,8,AA,MSCI
+EQT,EQT Corporation,Energy,-1.12%,59.90000153,-11159.59116,-186.303687,2.593968179,8.1333,AA,MSCI
+WDC,Western Digital Corporation,Information Technology,-2.44%,157.8300018,-24404.86703,-154.627553,2.488891928,8.8,AAA,MSCI
+AXP,American Express Company,Financials,-3.91%,357.1799927,-39134.73313,-109.56586,1.867349357,7.6667,AA,MSCI
+RJF,"Raymond James Financial, Inc",Financials,-4.71%,158.7299957,-47105.28754,-296.763616,2.559162317,7.5,AA,MSCI
+JCI,Johnson Controls International plc,Industrials,-6.14%,118.7200012,-61410.2631,-517.269731,2.641327326,8.3,AA,MSCI
+MS,Morgan Stanley,Financials,-6.33%,163.8600006,-63335.11981,-386.519709,2.498679757,7.7,AA,MSCI
+KMI,"Kinder Morgan, Inc",Energy,-8.96%,27.42000008,-89614.44088,-3268.214465,2.123034363,9.3333,AAA,MSCI
+CBRE,"CBRE Group, Inc",Real Estate,-10.28%,153.6600037,-102768.8837,-668.806984,2.290553436,9.1667,AAA,MSCI
+,,,,,,,,,,
+Total,25 Stocks,Portfolio return,32.76%,,,,,,,
+ESG,"AAA-5, AA-20",Portfolio risk,14.80%,,,,,,,
+Long,17 Stocks (143.89%),Sharpe ratio,2.01,,,,,,,
+Short,8 Stocks (-43.89%),,,,,,,,,
+Sector (GICS),Largest - Financial (24%),,,,,,,,,
+Top 5 stocks,Holds (80.55%),,,,,,,,,

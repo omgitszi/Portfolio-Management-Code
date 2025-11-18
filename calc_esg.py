@@ -15,7 +15,7 @@ import pandas as pd
 import numpy as np
 
 
-def compute_avg_esg(esg_dir: Path, out_dir: Path, out_name: str = 'esg_avg_by_ticker.csv') -> pd.DataFrame:
+def compute_avg_esg(esg_dir: Path, out_dir: Path, out_name: str = 'esg_avg_by_ticker.csv', normalize: str = 'none') -> pd.DataFrame:
 	"""Read all CSVs in `esg_dir`, compute averages and write result to `out_dir/out_name`.
 
 	Returns the DataFrame written.
@@ -50,12 +50,13 @@ def compute_avg_esg(esg_dir: Path, out_dir: Path, out_name: str = 'esg_avg_by_ti
 			# fallback to first column
 			ticker_col = df.columns[0]
 
+		# Do NOT fallback to a generic 'score' column — only accept a column
+		# that explicitly contains both 'esg' and 'score' (case-insensitive).
+		# If not present, skip this file and warn the user.
+
 		if score_col is None:
-			# try find any column that contains 'score'
-			for c in df.columns:
-				if 'score' in c.lower():
-					score_col = c
-					break
+			print(f'Warning: no ESG score column (containing both "esg" and "score") found in {f}; skipping')
+			continue
 
 		if score_col is None:
 			print(f'Warning: no ESG score column found in {f}; skipping')
@@ -77,16 +78,47 @@ def compute_avg_esg(esg_dir: Path, out_dir: Path, out_name: str = 'esg_avg_by_ti
 		# Parse ESG score to numeric; coerce non-numeric (#N/A etc.) to NaN
 		tmp['esg_score'] = pd.to_numeric(tmp['esg_score_raw'], errors='coerce')
 
+		# If the caller asked for per-file normalization, apply it here.
+		# Modes:
+		#  - 'none'  : leave numeric values as they are (current behavior)
+		#  - 'clip'  : clip values to [0, 10]
+		#  - 'scale' : per-file linear rescale so file's min->0 and max->10
+		if normalize and isinstance(normalize, str):
+			norm = normalize.lower().strip()
+			if norm == 'clip':
+				# Cap extreme provider scales to the expected 0-10 range
+				tmp['esg_score'] = tmp['esg_score'].clip(lower=0, upper=10)
+				if tmp['esg_score'].max() > 10:
+					# This should not happen after clip, just informational
+					pass
+			elif norm == 'scale':
+				# Rescale per-file so values map into 0..10 (preserves relative differences)
+				vals = tmp['esg_score'].dropna()
+				if not vals.empty:
+					minv = vals.min()
+					maxv = vals.max()
+					if pd.notna(minv) and pd.notna(maxv) and maxv > minv:
+						tmp['esg_score'] = (tmp['esg_score'] - minv) / (maxv - minv) * 10.0
+					else:
+						# Nothing to scale (all values identical); leave as-is but cap at 10
+						tmp['esg_score'] = tmp['esg_score'].clip(upper=10)
+			# else: 'none' or unknown -> leave as-is
+
 		# Keep only rows with a valid numeric ESG score and a non-empty ticker
 		tmp = tmp[tmp['ticker'].notna() & (tmp['ticker'].str.len() > 0)]
 		tmp = tmp[~tmp['esg_score'].isna()].loc[:, ['ticker', 'esg_score']]
 
 		parts.append(tmp)
 
+	# If normalization requested, apply per-file normalization that happened above
+	# (we store raw parsed numeric values in parts entries already)
+
 	if not parts:
 		raise RuntimeError('No valid ESG score rows found across ESG CSVs')
 
 	all_df = pd.concat(parts, ignore_index=True)
+
+	# Note: normalization applied earlier per-file. Keep existing behavior here.
 
 	# Group by ticker and compute stats
 	agg = all_df.groupby('ticker')['esg_score'].agg(['mean', 'count', 'std']).reset_index()

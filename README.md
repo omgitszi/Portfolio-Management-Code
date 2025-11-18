@@ -18,6 +18,7 @@ This repository contains scripts used for: aggregating ESG scores, computing mom
 	- `output/portfolio_weighting_long_only.csv` (long-only projection)
 	- `output/portfolio(test).csv` and `output/portfolio(test)_long.csv` (no-shrink comparison portfolios)
 - `graphs.py` — Generate a visualization of assets, the efficient frontier, and the Capital Market Line. Saves `graphs/cml.png`.
+- `main.py` — Orchestrator that runs the pipeline end-to-end: `calc_esg.py` -> `momentum.py` -> `weighting_updated.py` -> `volatility.py`. Uses the project `.venv` Python if present.
 
 Other utility scripts/files in this repo:
 - `shortlisting.py` — builds ESG shortlists from supplied S&P risk ratings CSVs.
@@ -40,6 +41,12 @@ If you prefer to install only missing packages, use:
 ```
 
 ## Typical workflow / run order
+0. Run the full pipeline (runs ESG aggregation, momentum, weighting, volatility):
+
+```powershell
+.\.venv\Scripts\python.exe .\main.py
+```
+
 1. Aggregate ESG averages (if you have raw ESG CSVs):
 ```powershell
 .\.venv\Scripts\python.exe .\calc_esg.py
@@ -57,6 +64,12 @@ If you prefer to install only missing packages, use:
 ```powershell
 .\.venv\Scripts\python.exe .\graphs.py
 ```
+
+## Unused / Manual Scripts
+- `shortlisting.py` — Builds ESG shortlists from supplied S&P risk ratings CSVs. This script is available for manual use but is not invoked by `main.py` by default.
+- `graphs.py` — Plotting helper to generate the CML/efficient frontier plot. It's useful for manual inspection but `main.py` does not call it automatically (you can run it manually as shown above).
+
+Note: "Unused" here means "not executed by `main.py` in the default orchestration". These scripts may still be useful and can be run manually; if you want them included in the automated pipeline I can add them to `main.py`.
 
 ## Key output files (examples in `output/`)
 - `esg_avg_by_ticker.csv` — averaged ESG scores per ticker (from `calc_esg.py`).
