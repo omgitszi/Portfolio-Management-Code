@@ -6,70 +6,81 @@ Short README with setup and how to run the analysis scripts used in the project.
 - Python 3.10+ (or your system Python)
 - A project-local virtual environment (`.venv`) is recommended (create with `python -m venv .venv`).
 
-## Setup (Windows PowerShell)
+# EC4430 — Portfolio Management (code)
 
-1. Create the venv (if missing):
+This repository contains scripts used for: aggregating ESG scores, computing momentum-based candidate lists, and constructing mean-variance portfolios (with shrinkage and no-shrink comparisons). Generated CSVs are stored under `output/`. A plotting helper produces a Capital Market Line (CML) visualization under `graphs/`.
 
+**Quick summary of main scripts**
+- `calc_esg.py` — Aggregate ESG CSVs under `ESG/` and write `output/esg_avg_by_ticker.csv`.
+- `momentum.py` — Compute momentum (12m/6m) and z-scores for a universe; updated to optionally use `output/top_esg_tickers.csv` and write candidate files (`output/top_esg_tickers_momentum_scores.csv`, `output/candidate_tickers.csv`, `output/candidate_short_term_comparison.csv`).
+- `weighting_updated.py` — Read candidate tickers (default `output/candidate_tickers.csv`), estimate expected returns and covariance, apply optional mean shrinkage, compute tangency (Max-Sharpe) weights, and write several outputs:
+	- `output/portfolio_weighting.csv` (primary weights)
+	- `output/portfolio_weighting_long_only.csv` (long-only projection)
+	- `output/portfolio(test).csv` and `output/portfolio(test)_long.csv` (no-shrink comparison portfolios)
+- `graphs.py` — Generate a visualization of assets, the efficient frontier, and the Capital Market Line. Saves `graphs/cml.png`.
+
+Other utility scripts/files in this repo:
+- `shortlisting.py` — builds ESG shortlists from supplied S&P risk ratings CSVs.
+- `data.py` — helper for processing candidate lists and simple ranking tasks.
+
+## Requirements
+- Python 3.10+ recommended
+- Dependencies are listed in `requirements.txt`. Typical packages used: `pandas`, `numpy`, `yfinance`, `matplotlib`.
+
+Install into the project venv (PowerShell):
 ```powershell
 python -m venv .venv
-```
-
-2. Install dependencies into the venv:
-
-```powershell
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-3. (Optional) Activate the venv in PowerShell:
-
+If you prefer to install only missing packages, use:
 ```powershell
-. .\.venv\Scripts\Activate.ps1
-# If activation is blocked by policy, either run the commands using the venv python directly
-# or set the execution policy for the current user (run PowerShell as admin):
-# Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+.\.venv\Scripts\pip.exe install pandas numpy yfinance matplotlib
 ```
 
-## Main scripts
-
-- `momentum.py`  compute risk-adjusted momentum scores for the S&P 500 and write results to `output/`.
-- `shortlisting.py`  builds `output/top200_esg.csv` from the S&P risk ratings file (if present in repo root) and computes the overlap with momentum shortlists; outputs placed in `output/`.
-- `data.py`  reads a shortlist (e.g. `output/sp500_top20_esg_overlap.csv`) and computes top-25 by Sharpe; writes `output/top25_by_sharpe.csv`.
-- `weighting.py`  reads `output/top25_by_sharpe.csv`, pulls price histories, computes tangency weights (with optional mu shrinkage), and writes `output/top25_weights.csv`.
-
-## Run examples (PowerShell)
-
+## Typical workflow / run order
+1. Aggregate ESG averages (if you have raw ESG CSVs):
 ```powershell
-# run momentum (uses yfinance; long-running)
+.\.venv\Scripts\python.exe .\calc_esg.py
+```
+2. Compute momentum scores (optionally restrict to `output/top_esg_tickers.csv`):
+```powershell
 .\.venv\Scripts\python.exe .\momentum.py
-
-# build top200 and compute overlap
-.\.venv\Scripts\python.exe .\overlap_top200.py
-
-# compute top25 by Sharpe
-.\.venv\Scripts\python.exe .\data.py
-
-# compute weights for top25
-.\.venv\Scripts\python.exe .\weighting.py
+```
+3. Build candidate lists (12m / 6m) — the momentum script writes these (`output/candidate_tickers.csv`, `output/candidate_short_term_comparison.csv`).
+4. Compute portfolio weights from candidates:
+```powershell
+.\.venv\Scripts\python.exe .\weighting_updated.py
+```
+5. Create CML / frontier plot:
+```powershell
+.\.venv\Scripts\python.exe .\graphs.py
 ```
 
-## Outputs
-All generated CSVs are written to the `output/` directory. Examples:
+## Key output files (examples in `output/`)
+- `esg_avg_by_ticker.csv` — averaged ESG scores per ticker (from `calc_esg.py`).
+- `top_esg_tickers.csv` — ESG-selected tickers (shortlist).
+- `top_esg_tickers_momentum_scores.csv` — momentum results for the ESG shortlist.
+- `candidate_tickers.csv` — top-20% 12m candidates (used by `weighting_updated.py`).
+- `candidate_short_term_comparison.csv` — 6m top-20% for comparison.
+- `portfolio_weighting.csv` — primary computed tangency weights.
+- `portfolio_weighting_long_only.csv` — long-only projection of the primary portfolio.
+- `portfolio(test).csv`, `portfolio(test)_long.csv` — no-shrink comparison portfolios.
 
-- `output/sp500_momentum_results.csv`
-- `output/sp500_momentum_scores.csv`
-- `output/sp500_top20_12m.csv`, `output/sp500_top20_6m.csv`
-- `output/sp500_top20_all.csv`
-- `output/top200_esg.csv` (created by `shortlisting.py` if the risk file is present)
-- `output/sp500_top20_esg_overlap.csv`
-- `output/top25_by_sharpe.csv`
-- `output/top25_weights.csv`
-
-## Notes about the S&P ESG / risk file
-
-- If you have the S&P risk ratings CSV (for example, `SP 500 ESG Risk Ratings.csv`) place it in the repo root. `shortlisting.py` will automatically detect common filenames and create `output/top200_esg.csv`.
-- The current code treats larger ESG percentile/score as a better rating by default (higher = better). If you want the opposite behavior, edit `shortlisting.py` or tell me and I will change it.
+## Notes / behavior highlights
+- `weighting_updated.py` includes an option to shrink expected returns (mu) toward the cross-sectional mean. The script also writes a no-shrink tangency portfolio for comparison.
+- Borrow/lending policy in `weighting_updated.py`: lending (credit) default is 3%; borrowing default is 6% but the script sets borrowing equal to lending unless `portfolio_value > 1_000_000`.
+- `graphs.py` now computes the analytic unconstrained efficient frontier (Markowitz) and plots the Capital Market Line (CML). If you need a long-only constrained frontier, tell me and I can add a quadratic-program solver (SciPy/cvxopt) to compute that.
 
 ## Troubleshooting
-- If a package import fails (e.g. `ModuleNotFoundError: No module named 'yfinance'`), ensure you installed `requirements.txt` into the venv you're running. Use the explicit venv python above to install/run to avoid interpreter mismatches.
+- If a package import fails (e.g. `ModuleNotFoundError`), make sure you installed the packages into the same interpreter you use to run the scripts. Use the explicit venv python path shown above to avoid mismatches.
+- If `momentum.py` or `weighting_updated.py` fails because expected CSV inputs are missing, run the upstream steps (ESG aggregation → momentum → candidate generation) first.
+
+## Next steps / improvements I can do
+- Add a `Makefile` / PowerShell script to run the full pipeline end-to-end.
+- Add unit tests for the weighting functions (tangency, shrinkage) and a small example dataset to speed up development.
+- Add a long-only optimizer to compute the exact constrained efficient frontier.
+
+If you'd like I can commit this README update, or tweak the wording/sections to match your preferred style. 
 

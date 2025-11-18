@@ -114,11 +114,13 @@ def main(candidates_path: str = 'output/candidate_tickers.csv', top_k: int = 25,
     tickers = df['ticker_sel'].dropna().unique().tolist()
     print(f"Found {len(tickers)} candidate tickers")
 
+    # Use a fixed end date for reproducibility (15 Nov 2025)
+    fixed_end = datetime.date(2025, 11, 15)
     # Determine date range for quick selection metric
-    end = datetime.date.today()
+    end = fixed_end
     start = end - datetime.timedelta(days=select_window_days)
     start_s = start.isoformat(); end_s = end.isoformat()
-    print(f"Downloading prices for selection window {start_s} to {end_s}")
+    print(f"Downloading prices for selection window {start_s} to {end_s} (fixed end date)")
     prices = download_prices(tickers, start=start_s, end=end_s)
     if prices.empty:
         print("No price data available for selection. Aborting.")
@@ -156,9 +158,9 @@ def main(candidates_path: str = 'output/candidate_tickers.csv', top_k: int = 25,
     # Now download longer history for covariance estimation
     # Use calendar days for cov window to represent full years (365 days/year)
     cov_days = cov_window_years * 365
-    cov_start = (datetime.date.today() - datetime.timedelta(days=cov_days)).isoformat()
-    cov_end = datetime.date.today().isoformat()
-    print(f"Downloading historical prices for covariance estimation: {cov_start} to {cov_end}")
+    cov_start = (fixed_end - datetime.timedelta(days=cov_days)).isoformat()
+    cov_end = fixed_end.isoformat()
+    print(f"Downloading historical prices for covariance estimation: {cov_start} to {cov_end} (fixed end date)")
     prices_cov = download_prices(selected, start=cov_start, end=cov_end)
     if prices_cov.empty:
         print("No price data for covariance estimation. Aborting.")
@@ -318,6 +320,11 @@ def main(candidates_path: str = 'output/candidate_tickers.csv', top_k: int = 25,
     out_df['avg_esg_score'] = out_df['ticker'].map(esg_map)
 
     port_return = float(out_df['weight'].values.dot(mu))
+    # raw (no-shrink) portfolio expected return for comparison
+    try:
+        port_return_raw = float(out_df['weight'].values.dot(mu_orig))
+    except Exception:
+        port_return_raw = None
     port_vol = float(np.sqrt(out_df['weight'].values.T.dot(cov).dot(out_df['weight'].values)))
     port_sharpe = (port_return - borrow_rate) / port_vol if port_vol > 0 else np.nan
 
@@ -327,7 +334,9 @@ def main(candidates_path: str = 'output/candidate_tickers.csv', top_k: int = 25,
     out_df.to_csv(out_path, index=False)
 
     print(f"Saved weights to {out_path}")
-    print(f"Portfolio expected annual return: {port_return:.2%}")
+    if port_return_raw is not None:
+        print(f"Portfolio expected annual return (raw/no-shrink): {port_return_raw:.2%}")
+    print(f"Portfolio expected annual return (used / shrunk): {port_return:.2%}")
     print(f"Portfolio annual vol: {port_vol:.2%}")
     print(f"Portfolio Sharpe (borrow rate {borrow_rate:.2%}): {port_sharpe:.3f}")
 
@@ -358,11 +367,18 @@ def main(candidates_path: str = 'output/candidate_tickers.csv', top_k: int = 25,
 
         # Compute long-only portfolio metrics
         port_return_long = float(out_df_long['weight'].values.dot(mu))
+        # raw (no-shrink) long-only expected return for comparison
+        try:
+            port_return_long_raw = float(out_df_long['weight'].values.dot(mu_orig))
+        except Exception:
+            port_return_long_raw = None
         port_vol_long = float(np.sqrt(out_df_long['weight'].values.T.dot(cov).dot(out_df_long['weight'].values)))
         port_sharpe_long = (port_return_long - borrow_rate) / port_vol_long if port_vol_long > 0 else np.nan
 
         print(f"Saved long-only weights to {out_path_long}")
-        print(f"Long-only Portfolio expected annual return: {port_return_long:.2%}")
+        if port_return_long_raw is not None:
+            print(f"Long-only expected annual return (raw/no-shrink): {port_return_long_raw:.2%}")
+        print(f"Long-only Portfolio expected annual return (used / shrunk): {port_return_long:.2%}")
         print(f"Long-only Portfolio annual vol: {port_vol_long:.2%}")
         print(f"Long-only Portfolio Sharpe (borrow rate {borrow_rate:.2%}): {port_sharpe_long:.3f}")
     except Exception as e:
